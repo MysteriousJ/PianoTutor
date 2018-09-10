@@ -1,9 +1,8 @@
 All output will appear here, but ensure the Input Capture window is focused
 for keyboard inputs to work.
 Joystick inputs should work no matter which window has focus.
-Press any button on the joystick you want to use.
 
-\Press buttons on the joystick in the order you want to piano them.
+\Press buttons in the order you want to piano them.
 Press enter to confirm the sequence.
 You can press backspace to change the sequence at any time.
 
