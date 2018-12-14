@@ -17,6 +17,7 @@ enum Mode
 	Mode_practice
 };
 
+// Tutorial text that explains how to use the program
 struct DisplayText
 {
 	std::wstring intro;
@@ -30,6 +31,7 @@ struct ButtonInputAction
 	uint joystickIndex;
 };
 
+// D-pads are sometimes mapped to 8-way HAT inputs
 struct HatInputAction
 {
 	uint pov;
@@ -58,7 +60,7 @@ struct PianoState
 {
 	std::vector<InputAction> pianoSequence;
 	uint frameCount = 0;
-	uint lastInputFrame = 0;
+	uint previousInputFrame = 0;
 	uint nextExpectedPianoIndex = 0;
 };
 
@@ -82,15 +84,16 @@ struct Input
 	Joystick* joysticks;
 };
 
+// Read backslash-delimited strings from an input stream
 std::wstring parseString(std::wifstream& inStream)
 {
 	std::wstringstream outStream;
 	wchar_t c;
-	// Backslash delimited
 	while (inStream >> std::noskipws >> c && c != L'\\') outStream << c;
 	return outStream.str();
 }
 
+// Read the tutorial text from a file
 DisplayText parseTextFile(std::string fileName)
 {
 	DisplayText result;
@@ -154,6 +157,7 @@ void updateInput(Input* input)
 		joystick->previousHat = joystick->hat;
 		joystick->hat = SDL_JoystickGetHat(joystick->sdlJoy, 0);
 	}
+
 	// Update keyboard
 	int sdlKeyCount;
 	const Uint8 *keystates = SDL_GetKeyboardState(&sdlKeyCount);
@@ -168,6 +172,7 @@ void updateInput(Input* input)
 	}
 }
 
+// Checks if two inputs are equal
 bool compareInputActions(InputAction a, InputAction b)
 {
 	if (a.type != b.type) return false;
@@ -187,6 +192,7 @@ bool compareInputActions(InputAction a, InputAction b)
 	}
 }
 
+// Make a list of all inputs that changed this frame
 std::vector<InputAction> getActiveInputsList(Input input)
 {
 	std::vector<InputAction> list;
@@ -280,6 +286,7 @@ void printSetSequenceInput(InputAction input, uint index)
 	}
 }
 
+// Record inputs to create the piano sequence
 void updateSetSequence(PianoState* state, Input input)
 {
 	std::vector<InputAction> currentInputList = getActiveInputsList(input);
@@ -299,31 +306,36 @@ void updatePractice(PianoState* state, Input input)
 	{
 		if (state->nextExpectedPianoIndex < state->pianoSequence.size())
 		{
-			if (state->lastInputFrame != 0)
+			// Print number of frames since last input
+			if (state->previousInputFrame != 0)
 			{
-				uint frameDelta = state->frameCount - state->lastInputFrame;
+				uint frameDelta = state->frameCount - state->previousInputFrame;
 				printf(" %d ", frameDelta);
 				if (frameDelta == 0) printf(" MISS ");
 			}
 
 			printPracticeLetter(state, currentInputList[i]);
 
+			// If this is the correct input, advance to the next expected input
 			if (compareInputActions(state->pianoSequence[state->nextExpectedPianoIndex], currentInputList[i]))
 			{
 				state->nextExpectedPianoIndex += 1;
 			}
 			else printf(" MISS ");
-			state->lastInputFrame = state->frameCount;
+
+			state->previousInputFrame = state->frameCount;
 		}
 	}
 
-	if (state->lastInputFrame != 0)
+	// If we've reached the end on the expected sequence, or if it's been a while without inputs,
+	// start over on a new line
+	if (state->previousInputFrame != 0)
 	{
-		uint frameDelta = state->frameCount - state->lastInputFrame;
+		uint frameDelta = state->frameCount - state->previousInputFrame;
 		if (frameDelta >= 15 || state->nextExpectedPianoIndex >= state->pianoSequence.size())
 		{
 			state->frameCount = 0;
-			state->lastInputFrame = 0;
+			state->previousInputFrame = 0;
 			state->nextExpectedPianoIndex = 0;
 			printf("\n");
 		}
@@ -350,9 +362,11 @@ int main(int argc, char** argv)
 	// Load localized display text from a file
 	DisplayText text = parseTextFile("en.txt");
 
+	// Print tutorial text
 	std::wcout << text.intro;
 	std::wcout << text.config;
 
+	// Game-style main loop
 	bool run = true;
 	while (run)
 	{
@@ -388,6 +402,7 @@ int main(int argc, char** argv)
 		
 		if (backspacePressed && state.pianoSequence.size() > 0)
 		{
+			// Go back to sequence setup
 			std::wcout << text.config;
 			mode = Mode_setSequence;
 			state.pianoSequence.clear();
